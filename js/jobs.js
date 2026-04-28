@@ -50,7 +50,13 @@ const Jobs = {
     let lastError = null;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        const data = await Research.run(apiKey, job.name, job.company, { myBio, myLinkedIn, attachedFiles });
+        const data = await Research.run(apiKey, job.name, job.company, {
+          myBio, myLinkedIn, attachedFiles,
+          onProgress: (msg) => {
+            job.progress = msg;
+            this._emit();
+          },
+        });
         const profile = {
           id: Storage.uuid(),
           name: data.name || job.name,
@@ -83,7 +89,8 @@ const Jobs = {
       }
     }
     job.status = 'failed';
-    job.error = (lastError && lastError.message) || String(lastError);
+    const rawMsg = (lastError && lastError.message) || String(lastError);
+    job.error = friendlyError(rawMsg);
     this._emit();
     if (this.runningCount() === 0) this._releaseWakeLock();
     window.dispatchEvent(new CustomEvent('jobs:failed', { detail: { name: job.name, error: job.error } }));
@@ -117,3 +124,20 @@ const Jobs = {
 
 // Wake lock is auto-released when page becomes hidden; re-acquire when visible again
 document.addEventListener('visibilitychange', () => Jobs._maybeReacquire());
+
+function friendlyError(msg) {
+  if (!msg) return 'Unknown error';
+  if (/load failed|failed to fetch|networkerror|network error|the operation couldn.t be completed/i.test(msg)) {
+    return 'Network dropped (phone may have backgrounded). Tap retry.';
+  }
+  if (/401|invalid_api_key|authentication/i.test(msg)) {
+    return 'Bad API key. Open Settings and re-paste it.';
+  }
+  if (/quota|insufficient|credit/i.test(msg)) {
+    return 'Anthropic quota exceeded. Check your account.';
+  }
+  if (/429|rate.?limit/i.test(msg)) {
+    return 'Rate limited. Wait a minute and retry.';
+  }
+  return msg;
+}

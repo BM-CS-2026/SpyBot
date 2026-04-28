@@ -173,9 +173,12 @@ const Research = {
     const prompt = buildResearchPrompt(name, company, myBio, myLinkedIn, textBlobs);
     contentBlocks.push({ type: 'text', text: prompt });
 
-    onProgress?.('Querying Claude + web search');
+    onProgress?.('querying open sources');
 
-    const response = await API.call({
+    let searchCount = 0;
+    let lastTextNotify = 0;
+
+    const text = await API.callStream({
       apiKey,
       system: RESEARCH_SYSTEM,
       tools: [
@@ -187,11 +190,19 @@ const Research = {
       ],
       messages: [{ role: 'user', content: contentBlocks }],
       maxTokens: 16000,
+      onEvent: (ev) => {
+        if (ev.type === 'tool_use') {
+          searchCount++;
+          onProgress?.(`search ${searchCount}/30`);
+        } else if (ev.type === 'text' && ev.accumulated > lastTextNotify + 300) {
+          lastTextNotify = ev.accumulated;
+          onProgress?.(`compiling · ${(ev.accumulated / 1000).toFixed(1)}k chars`);
+        }
+      },
     });
 
-    onProgress?.('Parsing intel');
+    onProgress?.('parsing intel');
 
-    const text = API.extractText(response);
     const json = API.extractJson(text);
     if (!json) {
       console.error('Could not parse JSON from response. Raw text:', text);

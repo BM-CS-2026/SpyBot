@@ -39,6 +39,83 @@ const API = {
     return json;
   },
 
+  // Streaming variant — keeps the connection actively receiving SSE events,
+  // which iOS Safari is much less likely to suspend than a silent long fetch.
+  // onEvent gets called with {type:'text'|'tool_use'|'tool_result', accumulated?, name?}
+  // Returns final assistant text.
+  async callStream({ apiKey, system, messages, tools, maxTokens = 16000, onEvent }) {
+    if (!apiKey) throw new Error('API key missing. Open Settings to add it.');
+
+    const body = {
+      model: MODEL,
+      max_tokens: maxTokens,
+      messages,
+      stream: true,
+    };
+    if (system) body.system = system;
+    if (tools) body.tools = tools;
+
+    const res = await fetch(ANTHROPIC_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      let errMsg = `HTTP ${res.status}`;
+      try {
+        const errJson = await res.json();
+        errMsg = errJson.error?.message || errMsg;
+      } catch (_) {}
+      throw new Error(errMsg);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let assistantText = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop();
+      for (const part of parts) {
+        let dataLine = '';
+        for (const line of part.split('\n')) {
+          if (line.startsWith('data: ')) dataLine = line.slice(6);
+        }
+        if (!dataLine || dataLine === '[DONE]') continue;
+        let json;
+        try { json = JSON.parse(dataLine); } catch (_) { continue; }
+
+        if (json.type === 'content_block_delta') {
+          if (json.delta?.type === 'text_delta' && json.delta.text) {
+            assistantText += json.delta.text;
+            onEvent?.({ type: 'text', accumulated: assistantText.length });
+          }
+        } else if (json.type === 'content_block_start') {
+          const blk = json.content_block;
+          if (blk?.type === 'server_tool_use') {
+            onEvent?.({ type: 'tool_use', name: blk.name || 'web_search' });
+          } else if (blk?.type === 'web_search_tool_result') {
+            onEvent?.({ type: 'tool_result' });
+          }
+        } else if (json.type === 'error') {
+          throw new Error(json.error?.message || 'Stream error');
+        }
+      }
+    }
+
+    return assistantText;
+  },
+
   // Pull all text blocks out of an Anthropic response
   extractText(response) {
     if (!response?.content) return '';

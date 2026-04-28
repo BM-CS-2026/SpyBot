@@ -111,7 +111,7 @@ const App = {
           </div>
           <div class="job-info">
             <div class="job-name">${escHtml(j.name)}${j.company ? ` <span class="job-co">@ ${escHtml(j.company)}</span>` : ''}</div>
-            <div class="job-meta">▸ scanning open sources · ${elapsed}s</div>
+            <div class="job-meta">▸ ${escHtml(j.progress || 'scanning open sources')} · ${elapsed}s</div>
           </div>
         </div>`;
       }
