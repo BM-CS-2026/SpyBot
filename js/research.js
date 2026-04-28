@@ -208,6 +208,39 @@ const Research = {
     };
   },
 
+  // Stream a single research call and return parsed JSON.
+  async run(apiKey, name, company, options = {}) {
+    const params = this.buildParams(name, company, options);
+
+    let searchCount = 0;
+    let lastTextNotify = 0;
+
+    const text = await API.callStream({
+      apiKey,
+      system: params.system,
+      messages: params.messages,
+      tools: params.tools,
+      maxTokens: params.max_tokens,
+      onEvent: (ev) => {
+        if (ev.type === 'tool_use') {
+          searchCount++;
+          options.onProgress?.(`search ${searchCount}/30`);
+        } else if (ev.type === 'text' && ev.accumulated > lastTextNotify + 300) {
+          lastTextNotify = ev.accumulated;
+          options.onProgress?.(`compiling · ${(ev.accumulated / 1000).toFixed(1)}k chars`);
+        }
+      },
+    });
+
+    const json = API.extractJson(text);
+    if (!json) {
+      console.error('Could not parse JSON from response. Raw text:', text);
+      throw new Error('Got response but could not parse JSON');
+    }
+    if (!json.name && !json.not_found) json.name = name;
+    return json;
+  },
+
   // Given a single batch result entry, extract the profile JSON.
   // resultEntry shape: {custom_id, result: {type:'succeeded'|'errored'|..., message?, error?}}
   parseResult(resultEntry, fallbackName) {

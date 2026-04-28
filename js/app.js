@@ -1,6 +1,6 @@
 // App — view router + UI controller
 
-const APP_VERSION = '1.0.10';  // bump this whenever sw.js cache name changes
+const APP_VERSION = '1.0.11';  // bump this whenever sw.js cache name changes
 
 const App = {
   state: {
@@ -176,7 +176,7 @@ const App = {
         <span class="active-jobs-count">${running}</span>
       </div>
       ${rows}
-      ${running > 0 ? '<div class="active-jobs-tip">Running on Anthropic servers. You can lock your phone. Reopen the app to check progress.</div>' : ''}
+      ${running > 0 ? '<div class="active-jobs-tip">Keep this screen open while scanning. Closing the app or locking the phone may interrupt the request.</div>' : ''}
     `;
     $panel.querySelectorAll('.job-dismiss').forEach(b => b.addEventListener('click', (e) => {
       Jobs.dismiss(e.currentTarget.dataset.id);
@@ -387,7 +387,7 @@ const App = {
     if (this.state.view !== 'home') this.go('home');
     else { this.refreshAttachedList(); this.refreshActiveJobs(); }
 
-    toast(`▶ ${names.length} search${names.length > 1 ? 'es' : ''} submitted. You can lock your phone.`);
+    toast(`▶ ${names.length} search${names.length > 1 ? 'es' : ''} running. Keep this screen open.`);
   },
 
   bindLoading(opts) {
@@ -548,6 +548,24 @@ const App = {
       if (!confirm('Wipe ALL saved profiles? This cannot be undone.')) return;
       Storage.wipeAll();
       toast('All profiles wiped');
+    });
+
+    document.getElementById('clear-cache-btn').addEventListener('click', async () => {
+      if (!confirm('Clear cached app files and reload? Your saved profiles, API key, and bio will NOT be touched.')) return;
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const reg of regs) await reg.unregister();
+        }
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          for (const k of keys) await caches.delete(k);
+        }
+        toast('Cache cleared. Reloading...');
+        setTimeout(() => location.reload(true), 600);
+      } catch (e) {
+        toast('Cache clear failed: ' + e.message, true);
+      }
     });
   },
 };
