@@ -1,5 +1,7 @@
 // App — view router + UI controller
 
+const APP_VERSION = '1.0.9';   // bump this whenever sw.js cache name changes
+
 const App = {
   state: {
     view: 'home',
@@ -263,7 +265,9 @@ const App = {
     if (!raw) { toast('Enter at least one name', true); return; }
     const names = parseNamesInput(raw);
     if (!names.length) { toast('No valid names found', true); return; }
-    this.runResearch(names);
+    // Always confirm before launching the search
+    this.state.pendingNames = names;
+    this.go('confirm');
   },
 
   async runFromImage(file) {
@@ -298,13 +302,20 @@ const App = {
       $chips.innerHTML = '';
       this.state.pendingNames.forEach((n, idx) => {
         const chip = document.createElement('div');
-        chip.className = 'name-chip';
+        chip.className = 'name-chip dual';
         chip.innerHTML = `
-          <input type="text" value="${escAttr(n.name)}" data-idx="${idx}" />
+          <div class="chip-fields">
+            <input class="chip-name" type="text" value="${escAttr(n.name)}" placeholder="Full name" />
+            <input class="chip-co" type="text" value="${escAttr(n.company || '')}" placeholder="Company (optional)" />
+          </div>
           <button data-idx="${idx}" aria-label="Remove">✕</button>
         `;
-        chip.querySelector('input').addEventListener('change', (e) => {
+        chip.querySelector('.chip-name').addEventListener('change', (e) => {
           this.state.pendingNames[idx].name = e.target.value.trim();
+        });
+        chip.querySelector('.chip-co').addEventListener('change', (e) => {
+          const v = e.target.value.trim();
+          this.state.pendingNames[idx].company = v || null;
         });
         chip.querySelector('button').addEventListener('click', () => {
           this.state.pendingNames.splice(idx, 1);
@@ -413,6 +424,9 @@ const App = {
 
   // ─── Settings ─────────────────────────
   bindSettings() {
+    const $ver = document.getElementById('app-version');
+    if ($ver) $ver.textContent = `v${APP_VERSION}`;
+
     const $input = document.getElementById('api-key-input');
     const $status = document.getElementById('key-status');
     const current = Storage.getApiKey();
