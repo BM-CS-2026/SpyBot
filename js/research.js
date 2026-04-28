@@ -146,11 +146,11 @@ Final reminders:
 }
 
 const Research = {
-  async run(apiKey, name, company, options = {}) {
-    const { myBio, myLinkedIn, attachedFiles, onProgress } = options;
-    onProgress?.('Composing query');
+  // Build params (model/max_tokens/system/messages/tools) for one target.
+  // Used by both batch submission and (future) direct streaming.
+  buildParams(name, company, options = {}) {
+    const { myBio, myLinkedIn, attachedFiles } = options;
 
-    // Split attached files by type
     const textBlobs = [];
     const contentBlocks = [];
     if (attachedFiles && attachedFiles.length) {
@@ -173,42 +173,37 @@ const Research = {
     const prompt = buildResearchPrompt(name, company, myBio, myLinkedIn, textBlobs);
     contentBlocks.push({ type: 'text', text: prompt });
 
-    onProgress?.('querying open sources');
-
-    let searchCount = 0;
-    let lastTextNotify = 0;
-
-    const text = await API.callStream({
-      apiKey,
+    return {
+      model: 'claude-sonnet-4-5-20250929',
+      max_tokens: 16000,
       system: RESEARCH_SYSTEM,
-      tools: [
-        {
-          type: 'web_search_20250305',
-          name: 'web_search',
-          max_uses: 30,
-        },
-      ],
       messages: [{ role: 'user', content: contentBlocks }],
-      maxTokens: 16000,
-      onEvent: (ev) => {
-        if (ev.type === 'tool_use') {
-          searchCount++;
-          onProgress?.(`search ${searchCount}/30`);
-        } else if (ev.type === 'text' && ev.accumulated > lastTextNotify + 300) {
-          lastTextNotify = ev.accumulated;
-          onProgress?.(`compiling · ${(ev.accumulated / 1000).toFixed(1)}k chars`);
-        }
-      },
-    });
+      tools: [
+        { type: 'web_search_20250305', name: 'web_search', max_uses: 30 },
+      ],
+    };
+  },
 
-    onProgress?.('parsing intel');
-
+  // Given a single batch result entry, extract the profile JSON.
+  // resultEntry shape: {custom_id, result: {type:'succeeded'|'errored'|..., message?, error?}}
+  parseResult(resultEntry, fallbackName) {
+    const r = resultEntry?.result;
+    if (!r) throw new Error('Empty batch result');
+    if (r.type !== 'succeeded') {
+      const detail = r.error?.message || r.error?.type || r.type;
+      throw new Error(`Batch ${r.type}: ${detail}`);
+    }
+    const message = r.message;
+    const text = (message?.content || [])
+      .filter(b => b.type === 'text')
+      .map(b => b.text)
+      .join('\n');
     const json = API.extractJson(text);
     if (!json) {
-      console.error('Could not parse JSON from response. Raw text:', text);
-      throw new Error('Got response but could not parse JSON. Try again or check the console.');
+      console.error('Could not parse JSON from batch response. Raw text:', text);
+      throw new Error('Got response but could not parse JSON');
     }
-    json.name = json.name || name;
+    if (fallbackName && !json.name) json.name = fallbackName;
     return json;
   },
 };

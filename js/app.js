@@ -38,6 +38,8 @@ const App = {
       if (this.state.view === 'home' && Jobs.runningCount() > 0) this.refreshActiveJobs();
     }, 1000);
 
+    Jobs.init();
+
     this.go('home');
   },
 
@@ -99,8 +101,13 @@ const App = {
     }
     $panel.classList.remove('hidden');
     const rows = jobs.map(j => {
-      const elapsed = Math.floor((Date.now() - j.startedAt) / 1000);
-      if (j.status === 'running') {
+      const startedAt = j.submittedAt || j.startedAt || Date.now();
+      const elapsedSec = Math.floor((Date.now() - startedAt) / 1000);
+      const elapsed = elapsedSec < 90
+        ? `${elapsedSec}s`
+        : `${Math.floor(elapsedSec / 60)}m ${elapsedSec % 60}s`;
+      const isPending = ['submitting', 'queued', 'processing', 'running'].includes(j.status);
+      if (isPending) {
         return `<div class="job-row running">
           <div class="job-radar">
             <div class="ring"></div>
@@ -111,8 +118,9 @@ const App = {
           </div>
           <div class="job-info">
             <div class="job-name">${escHtml(j.name)}${j.company ? ` <span class="job-co">@ ${escHtml(j.company)}</span>` : ''}</div>
-            <div class="job-meta">▸ ${escHtml(j.progress || 'scanning open sources')} · ${elapsed}s</div>
+            <div class="job-meta">▸ ${escHtml(j.progress || j.status)} · ${elapsed}</div>
           </div>
+          <button class="job-dismiss" data-id="${j.id}" aria-label="Cancel">✕</button>
         </div>`;
       }
       if (j.status === 'done') {
@@ -145,7 +153,7 @@ const App = {
         <span class="active-jobs-count">${running}</span>
       </div>
       ${rows}
-      ${running > 0 ? '<div class="active-jobs-tip">Keep this screen on. Locking the phone may interrupt the scan.</div>' : ''}
+      ${running > 0 ? '<div class="active-jobs-tip">Running on Anthropic servers. You can lock your phone. Reopen the app to check progress.</div>' : ''}
     `;
     $panel.querySelectorAll('.job-dismiss').forEach(b => b.addEventListener('click', (e) => {
       Jobs.dismiss(e.currentTarget.dataset.id);
@@ -337,7 +345,7 @@ const App = {
     if (this.state.view !== 'home') this.go('home');
     else { this.refreshAttachedList(); this.refreshActiveJobs(); }
 
-    toast(`▶ ${names.length} search${names.length > 1 ? 'es' : ''} running in background`);
+    toast(`▶ ${names.length} search${names.length > 1 ? 'es' : ''} submitted. You can lock your phone.`);
   },
 
   bindLoading(opts) {

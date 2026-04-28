@@ -116,6 +116,68 @@ const API = {
     return assistantText;
   },
 
+  // ── Batch API ───────────────────────────────────────────
+  async submitBatch({ apiKey, requests }) {
+    const res = await fetch('https://api.anthropic.com/v1/messages/batches', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({ requests }),
+    });
+    if (!res.ok) {
+      let err = `HTTP ${res.status}`;
+      try { err = (await res.json()).error?.message || err; } catch (_) {}
+      throw new Error(err);
+    }
+    return await res.json();
+  },
+
+  async getBatch({ apiKey, batchId }) {
+    const res = await fetch(`https://api.anthropic.com/v1/messages/batches/${batchId}`, {
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+    });
+    if (!res.ok) {
+      let err = `HTTP ${res.status}`;
+      try { err = (await res.json()).error?.message || err; } catch (_) {}
+      throw new Error(err);
+    }
+    return await res.json();
+  },
+
+  async getBatchResults({ apiKey, resultsUrl }) {
+    const res = await fetch(resultsUrl, {
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status} fetching batch results`);
+    const text = await res.text();
+    return text.split('\n').filter(Boolean).map(line => JSON.parse(line));
+  },
+
+  async cancelBatch({ apiKey, batchId }) {
+    try {
+      await fetch(`https://api.anthropic.com/v1/messages/batches/${batchId}/cancel`, {
+        method: 'POST',
+        headers: {
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+      });
+    } catch (_) { /* best effort */ }
+  },
+
   // Pull all text blocks out of an Anthropic response
   extractText(response) {
     if (!response?.content) return '';
