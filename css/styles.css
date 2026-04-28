@@ -392,8 +392,8 @@ textarea:focus, input:focus { outline: none; border-color: var(--cyan); box-shad
 .bullet-list { list-style: none; }
 .bullet-list li {
   position: relative;
-  padding: 6px 0 6px 18px;
-  line-height: 1.5;
+  padding: 8px 0 8px 18px;
+  line-height: 1.45;
   font-size: 14px;
   border-bottom: 1px solid var(--bg-3);
 }
@@ -403,8 +403,29 @@ textarea:focus, input:focus { outline: none; border-color: var(--cyan); box-shad
   position: absolute; left: 0;
   color: var(--cyan);
   font-size: 12px;
-  top: 7px;
+  top: 10px;
 }
+.bullet-list li.expandable { cursor: pointer; }
+.bullet-list li.expandable .bullet-main { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.bullet-list li.expandable .bullet-toggle {
+  flex-shrink: 0;
+  color: var(--cyan-soft);
+  font-size: 11px;
+  transition: transform 0.2s;
+  margin-left: 6px;
+}
+.bullet-list li.expandable.expanded .bullet-toggle { transform: rotate(180deg); color: var(--cyan); }
+.bullet-list li.expandable:hover .bullet-toggle { color: var(--cyan); }
+.bullet-list li.expandable.expanded { background: rgba(77, 255, 230, 0.04); border-radius: 6px; padding-left: 22px; }
+.bullet-more {
+  display: none;
+  margin-top: 6px;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.5;
+  font-style: italic;
+}
+.bullet-list li.expandable.expanded .bullet-more { display: block; }
 
 .subgroup { margin-top: 14px; }
 .subgroup:first-child { margin-top: 0; }
@@ -512,8 +533,68 @@ textarea:focus, input:focus { outline: none; border-color: var(--cyan); box-shad
 .key-status.ok { color: var(--cyan); }
 .key-status.miss { color: var(--amber); }
 
+/* attached files list */
+.attached-list {
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.attached-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 0;
+  font-size: 13px;
+}
+.attached-icon { font-size: 16px; }
+.attached-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attached-size { color: var(--text-faint); font-family: var(--mono); font-size: 11px; }
+.attached-remove {
+  background: transparent; border: none; color: var(--text-faint);
+  cursor: pointer; font-size: 16px; padding: 4px 8px;
+}
+.attached-remove:hover { color: var(--rose); }
+
 /* tablet up */
 @media (min-width: 720px) {
   .hero-title { font-size: 32px; }
   main { padding: 24px; }
+}
+
+/* ─── Print / PDF export ──────────────── */
+@media print {
+  @page { margin: 18mm 14mm; }
+  body, html {
+    background: #ffffff !important;
+    color: #14202b !important;
+  }
+  body { padding: 0 !important; }
+  #app { max-width: 100% !important; }
+  main { padding: 0 !important; }
+  .topbar, .icon-btn, #back-btn, #settings-btn, .toast, .profile-actions { display: none !important; }
+  .hero, .input-card, .dossier { display: none !important; }
+  .section, .card, .profile-header {
+    background: #ffffff !important;
+    border: 1px solid #c2cad6 !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .section-header { cursor: default !important; }
+  .section.collapsed .section-body { display: block !important; }
+  .section-toggle { display: none !important; }
+  .bullet-list li.expandable { cursor: default !important; }
+  .bullet-list li.expandable .bullet-toggle { display: none !important; }
+  .bullet-list li.expandable .bullet-more { display: block !important; font-style: normal !important; color: #4a5666 !important; }
+  .bullet-main { color: #14202b !important; }
+  .bullet-list li::before { color: #00786b !important; }
+  .section-title, .field-label, .subgroup-title, .timeline-years, .gloss-term, .char-tile .label { color: #00786b !important; }
+  .profile-head-name { color: #14202b !important; }
+  .profile-head-role { color: #4a5666 !important; }
+  .profile-photo { box-shadow: none !important; border: 1px solid #c2cad6 !important; color: #00786b !important; background: #f0f4f8 !important; }
+  .timeline::before { background: #00786b !important; }
+  .timeline-item::before { box-shadow: none !important; }
+  .char-tile { background: #f5f7fa !important; border: 1px solid #c2cad6 !important; }
+  .gloss-def, .timeline-co, .timeline-note { color: #4a5666 !important; }
+  .sources-list a { color: #00786b !important; }
+  a { color: #006bb6 !important; }
+  .notfound { color: #4a5666 !important; }
 }

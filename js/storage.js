@@ -2,6 +2,7 @@
 
 const KEY_PROFILES = 'spybot:profiles';
 const KEY_API = 'spybot:apiKey';
+const KEY_BIO = 'spybot:myBio';
 
 const Storage = {
   getApiKey() {
@@ -10,6 +11,13 @@ const Storage = {
   setApiKey(key) {
     if (key) localStorage.setItem(KEY_API, key);
     else localStorage.removeItem(KEY_API);
+  },
+  getMyBio() {
+    return localStorage.getItem(KEY_BIO) || '';
+  },
+  setMyBio(bio) {
+    if (bio) localStorage.setItem(KEY_BIO, bio);
+    else localStorage.removeItem(KEY_BIO);
   },
   list() {
     try {

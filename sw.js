@@ -1,5 +1,5 @@
 // SpyBot service worker — basic offline shell cache
-const CACHE_NAME = 'spybot-v1';
+const CACHE_NAME = 'spybot-v2';
 const SHELL = [
   './',
   './index.html',

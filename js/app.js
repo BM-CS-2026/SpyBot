@@ -3,7 +3,8 @@
 const App = {
   state: {
     view: 'home',
-    pendingNames: [],          // {name, company}[]
+    pendingNames: [],
+    attachedFiles: [],     // {name, type:'image'|'pdf'|'text', mediaType?, data?, content?}
     currentProfileId: null,
     history: [],
   },
@@ -22,9 +23,7 @@ const App = {
   },
 
   go(view, opts = {}) {
-    if (this.state.view !== view) {
-      this.state.history.push(this.state.view);
-    }
+    if (this.state.view !== view) this.state.history.push(this.state.view);
     this.state.view = view;
     this.$back.classList.toggle('hidden', view === 'home');
     this.render(view, opts);
@@ -60,7 +59,63 @@ const App = {
     });
     document.getElementById('capture-input').addEventListener('change', (e) => this.runFromImage(e.target.files[0]));
 
+    document.getElementById('attach-btn').addEventListener('click', () => {
+      document.getElementById('attach-input').click();
+    });
+    document.getElementById('attach-input').addEventListener('change', (e) => this.handleAttach(e.target.files));
+
+    this.refreshAttachedList();
     this.refreshProfileList();
+  },
+
+  async handleAttach(fileList) {
+    if (!fileList || !fileList.length) return;
+    const MAX = 12 * 1024 * 1024; // 12 MB total cap
+    let totalSize = this.state.attachedFiles.reduce((s, f) => s + (f.size || 0), 0);
+
+    for (const file of fileList) {
+      if (totalSize + file.size > MAX) {
+        toast(`Skipping ${file.name}: 12 MB total cap`, true);
+        continue;
+      }
+      try {
+        const entry = await fileToEntry(file);
+        this.state.attachedFiles.push(entry);
+        totalSize += file.size;
+      } catch (e) {
+        toast(`Could not read ${file.name}`, true);
+      }
+    }
+    document.getElementById('attach-input').value = '';
+    this.refreshAttachedList();
+  },
+
+  refreshAttachedList() {
+    const $list = document.getElementById('attached-list');
+    if (!$list) return;
+    if (!this.state.attachedFiles.length) {
+      $list.classList.add('hidden');
+      $list.innerHTML = '';
+      return;
+    }
+    $list.classList.remove('hidden');
+    $list.innerHTML = this.state.attachedFiles.map((f, i) => {
+      const icon = f.type === 'image' ? '🖼' : f.type === 'pdf' ? '📄' : '📝';
+      const sizeKb = Math.round((f.size || 0) / 1024);
+      return `<div class="attached-row">
+        <span class="attached-icon">${icon}</span>
+        <span class="attached-name">${escHtml(f.name)}</span>
+        <span class="attached-size">${sizeKb} KB</span>
+        <button class="attached-remove" data-i="${i}" aria-label="Remove">✕</button>
+      </div>`;
+    }).join('');
+    $list.querySelectorAll('.attached-remove').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const i = parseInt(e.currentTarget.dataset.i, 10);
+        this.state.attachedFiles.splice(i, 1);
+        this.refreshAttachedList();
+      });
+    });
   },
 
   refreshProfileList() {
@@ -179,6 +234,9 @@ const App = {
   // ─── Research run ─────────────────────
   async runResearch(names) {
     const apiKey = Storage.getApiKey();
+    const myBio = Storage.getMyBio();
+    const attachedFiles = this.state.attachedFiles.slice();
+
     this.go('loading', {
       title: `SCANNING ${names.length} TARGET${names.length > 1 ? 'S' : ''}…`,
       sub: 'Querying open sources',
@@ -194,8 +252,12 @@ const App = {
       $sub.textContent = `[${i + 1}/${names.length}] ${name}`;
       $log.children[i]?.classList.add('active');
       try {
-        const data = await Research.run(apiKey, name, company || null, (msg) => {
-          $sub.textContent = `[${i + 1}/${names.length}] ${name} — ${msg}`;
+        const data = await Research.run(apiKey, name, company || null, {
+          myBio,
+          attachedFiles,
+          onProgress: (msg) => {
+            $sub.textContent = `[${i + 1}/${names.length}] ${name} ${msg}`;
+          },
         });
         const profile = {
           id: Storage.uuid(),
@@ -214,6 +276,9 @@ const App = {
         toast(`${name}: ${e.message}`, true);
       }
     }
+
+    // Clear attached files after a successful batch
+    this.state.attachedFiles = [];
 
     if (names.length === 1 && lastSavedId) {
       this.go('profile', { id: lastSavedId });
@@ -252,6 +317,38 @@ const App = {
       toast('Profile deleted');
       this.go('home');
     });
+    document.getElementById('export-pdf-btn')?.addEventListener('click', () => this.exportPdf(profile));
+  },
+
+  exportPdf(profile) {
+    // Force-expand all sections + bullets so they all print
+    document.body.classList.add('printing');
+    document.querySelectorAll('.section.collapsed').forEach(s => {
+      s.dataset.wasCollapsed = '1';
+      s.classList.remove('collapsed');
+    });
+    document.querySelectorAll('li.expandable').forEach(li => {
+      li.dataset.wasCollapsed = '1';
+      li.classList.add('expanded');
+    });
+    document.title = `SpyBot — ${profile.name}`;
+
+    const restore = () => {
+      document.body.classList.remove('printing');
+      document.querySelectorAll('.section[data-was-collapsed="1"]').forEach(s => {
+        s.classList.add('collapsed');
+        delete s.dataset.wasCollapsed;
+      });
+      document.querySelectorAll('li.expandable[data-was-collapsed="1"]').forEach(li => {
+        li.classList.remove('expanded');
+        delete li.dataset.wasCollapsed;
+      });
+      document.title = 'SpyBot';
+      window.removeEventListener('afterprint', restore);
+    };
+    window.addEventListener('afterprint', restore);
+
+    setTimeout(() => window.print(), 100);
   },
 
   // ─── Settings ─────────────────────────
@@ -264,7 +361,7 @@ const App = {
       $status.textContent = `✓ Key configured (${current.slice(0, 10)}…)`;
       $status.className = 'key-status ok';
     } else {
-      $status.textContent = '⚠ No key set — searches will fail';
+      $status.textContent = '⚠ No key set, searches will fail';
       $status.className = 'key-status miss';
     }
     document.getElementById('save-key-btn').addEventListener('click', () => {
@@ -282,6 +379,33 @@ const App = {
       $status.className = 'key-status miss';
       toast('API key cleared');
     });
+
+    // Bio
+    const $bio = document.getElementById('my-profile-input');
+    const $bioStatus = document.getElementById('bio-status');
+    const bio = Storage.getMyBio();
+    if (bio) {
+      $bio.value = bio;
+      $bioStatus.textContent = `✓ Bio set (${bio.length} chars)`;
+      $bioStatus.className = 'key-status ok';
+    } else {
+      $bioStatus.textContent = '⚠ No bio yet, "what we have in common" will be empty';
+      $bioStatus.className = 'key-status miss';
+    }
+    document.getElementById('save-bio-btn').addEventListener('click', () => {
+      const b = $bio.value.trim();
+      Storage.setMyBio(b);
+      if (b) {
+        $bioStatus.textContent = `✓ Bio saved (${b.length} chars)`;
+        $bioStatus.className = 'key-status ok';
+        toast('Bio saved');
+      } else {
+        $bioStatus.textContent = '⚠ Bio cleared';
+        $bioStatus.className = 'key-status miss';
+        toast('Bio cleared');
+      }
+    });
+
     document.getElementById('wipe-all-btn').addEventListener('click', () => {
       if (!confirm('Wipe ALL saved profiles? This cannot be undone.')) return;
       Storage.wipeAll();
@@ -300,6 +424,39 @@ function parseNamesInput(raw) {
       if (m) return { name: m[1].trim(), company: m[2].trim() };
       return { name: line, company: null };
     });
+}
+
+async function fileToEntry(file) {
+  const name = file.name;
+  const size = file.size;
+  if (file.type.startsWith('image/')) {
+    const data = await readBase64(file);
+    return { name, size, type: 'image', mediaType: file.type, data };
+  }
+  if (file.type === 'application/pdf' || name.toLowerCase().endsWith('.pdf')) {
+    const data = await readBase64(file);
+    return { name, size, type: 'pdf', data };
+  }
+  // Treat as text
+  const content = await readText(file);
+  return { name, size, type: 'text', content };
+}
+
+function readBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result.split(',')[1]);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+function readText(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsText(file);
+  });
 }
 
 let toastTimer = null;

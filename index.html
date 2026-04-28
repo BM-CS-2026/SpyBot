@@ -61,8 +61,11 @@
         <div class="actions">
           <button id="run-text-btn" class="btn btn-primary">▶ RUN SEARCH</button>
           <button id="capture-btn" class="btn btn-ghost">📷 SCAN IMAGE</button>
-          <input type="file" id="capture-input" accept="image/*" capture="environment" hidden />
+          <button id="attach-btn" class="btn btn-ghost">📎 ATTACH FILES</button>
+          <input type="file" id="capture-input" accept="image/*" hidden />
+          <input type="file" id="attach-input" accept="image/*,application/pdf,text/plain,text/markdown,.txt,.md" multiple hidden />
         </div>
+        <div id="attached-list" class="attached-list hidden"></div>
       </div>
 
       <div class="dossier">
@@ -130,6 +133,15 @@
           <button id="clear-key-btn" class="btn btn-ghost">CLEAR</button>
         </div>
         <div id="key-status" class="key-status"></div>
+      </div>
+      <div class="card">
+        <label class="field-label" for="my-profile-input">YOUR PROFILE (for "what we have in common")</label>
+        <textarea id="my-profile-input" rows="6" placeholder="Anything about you that helps SpyBot find common ground:&#10;• Current role / company&#10;• Past roles, schools&#10;• Cities you've lived in&#10;• Interests, hobbies&#10;Free-form, write as much or little as you want."></textarea>
+        <div class="hint">Used only to find shared experiences with each target. Stored locally.</div>
+        <div class="actions">
+          <button id="save-bio-btn" class="btn btn-primary">SAVE BIO</button>
+        </div>
+        <div id="bio-status" class="key-status"></div>
       </div>
       <div class="card danger-card">
         <label class="field-label">DANGER ZONE</label>
