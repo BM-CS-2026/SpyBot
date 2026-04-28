@@ -562,39 +562,90 @@ textarea:focus, input:focus { outline: none; border-color: var(--cyan); box-shad
   color: var(--cyan);
 }
 .job-row {
-  display: flex; align-items: center; gap: 12px;
-  padding: 10px 0;
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 4px;
   border-bottom: 1px solid var(--bg-3);
 }
 .job-row:last-child { border-bottom: none; }
 .job-info { flex: 1; min-width: 0; }
 .job-name {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.job-co { color: var(--text-faint); font-weight: 400; }
+.job-co { color: var(--text-faint); font-weight: 400; font-size: 13px; }
 .job-meta {
   font-family: var(--mono);
   font-size: 11px;
-  color: var(--text-dim);
-  margin-top: 2px;
-  letter-spacing: 1px;
+  color: var(--cyan-soft);
+  margin-top: 4px;
+  letter-spacing: 1.5px;
 }
-.job-pulse {
-  width: 14px; height: 14px;
-  border-radius: 50%;
-  background: var(--cyan);
-  box-shadow: 0 0 12px var(--cyan);
+.job-row.failed .job-meta { color: var(--rose); }
+
+/* Per-target radar (rifle-scope style) */
+.job-radar {
+  position: relative;
+  width: 56px; height: 56px;
   flex-shrink: 0;
-  animation: jobPulse 1.2s ease-in-out infinite;
 }
-@keyframes jobPulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.4); opacity: 0.6; }
+.job-radar .ring {
+  position: absolute; inset: 0;
+  border: 1.5px solid var(--cyan-soft);
+  border-radius: 50%;
+  opacity: 0.55;
+}
+.job-radar .ring.r2 { inset: 28%; opacity: 0.35; }
+.job-radar .sweep {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0deg, var(--cyan-glow) 50deg, transparent 80deg);
+  animation: sweep 2s linear infinite;
+}
+.job-radar .dot {
+  position: absolute;
+  width: 6px; height: 6px;
+  background: var(--cyan);
+  border-radius: 50%;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 10px var(--cyan);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+.job-radar .reticle {
+  position: absolute; inset: -4px;
+  pointer-events: none;
+}
+.job-radar .reticle::before,
+.job-radar .reticle::after {
+  content: "";
+  position: absolute;
+  background: linear-gradient(to var(--dir, right), var(--cyan), transparent 28%, transparent 72%, var(--cyan));
+  opacity: 0.7;
+}
+.job-radar .reticle::before {
+  --dir: right;
+  top: 50%; left: 0; right: 0; height: 1.5px;
+  transform: translateY(-50%);
+}
+.job-radar .reticle::after {
+  --dir: bottom;
+  left: 50%; top: 0; bottom: 0; width: 1.5px;
+  transform: translateX(-50%);
+}
+
+.active-jobs-tip {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  color: var(--text-faint);
+  text-align: center;
+  padding-top: 10px;
+  margin-top: 8px;
+  border-top: 1px dashed var(--line);
 }
 .job-icon {
   width: 14px; height: 14px;

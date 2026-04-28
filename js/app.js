@@ -102,10 +102,16 @@ const App = {
       const elapsed = Math.floor((Date.now() - j.startedAt) / 1000);
       if (j.status === 'running') {
         return `<div class="job-row running">
-          <div class="job-pulse"></div>
+          <div class="job-radar">
+            <div class="ring"></div>
+            <div class="ring r2"></div>
+            <div class="sweep"></div>
+            <div class="dot"></div>
+            <div class="reticle"></div>
+          </div>
           <div class="job-info">
             <div class="job-name">${escHtml(j.name)}${j.company ? ` <span class="job-co">@ ${escHtml(j.company)}</span>` : ''}</div>
-            <div class="job-meta">scanning · ${elapsed}s</div>
+            <div class="job-meta">▸ scanning open sources · ${elapsed}s</div>
           </div>
         </div>`;
       }
@@ -132,12 +138,14 @@ const App = {
       return '';
     }).join('');
 
+    const running = Jobs.runningCount();
     $panel.innerHTML = `
       <div class="active-jobs-header">
         <span class="active-jobs-title">SCANNING</span>
-        <span class="active-jobs-count">${Jobs.runningCount()}</span>
+        <span class="active-jobs-count">${running}</span>
       </div>
       ${rows}
+      ${running > 0 ? '<div class="active-jobs-tip">Keep this screen on. Locking the phone may interrupt the scan.</div>' : ''}
     `;
     $panel.querySelectorAll('.job-dismiss').forEach(b => b.addEventListener('click', (e) => {
       Jobs.dismiss(e.currentTarget.dataset.id);

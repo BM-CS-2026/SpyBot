@@ -3,6 +3,24 @@
 
 const Jobs = {
   active: [],   // {id, name, company, status:'running'|'done'|'failed', startedAt, error?, profileId?}
+  _wakeLock: null,
+
+  async _acquireWakeLock() {
+    if (this._wakeLock || !('wakeLock' in navigator)) return;
+    try {
+      this._wakeLock = await navigator.wakeLock.request('screen');
+      this._wakeLock.addEventListener('release', () => { this._wakeLock = null; });
+    } catch (e) { /* ignore */ }
+  },
+  _releaseWakeLock() {
+    if (this._wakeLock) {
+      try { this._wakeLock.release(); } catch (_) {}
+      this._wakeLock = null;
+    }
+  },
+  _maybeReacquire() {
+    if (this.runningCount() > 0 && !document.hidden) this._acquireWakeLock();
+  },
 
   start(names, options = {}) {
     const apiKey = Storage.getApiKey();
@@ -23,39 +41,57 @@ const Jobs = {
       this.active.push(job);
       this._run(job, apiKey, myBio, myLinkedIn, attachedFiles);
     });
+    this._acquireWakeLock();
     this._emit();
   },
 
   async _run(job, apiKey, myBio, myLinkedIn, attachedFiles) {
-    try {
-      const data = await Research.run(apiKey, job.name, job.company, { myBio, myLinkedIn, attachedFiles });
-      const profile = {
-        id: Storage.uuid(),
-        name: data.name || job.name,
-        company: data.company || job.company || null,
-        createdAt: Date.now(),
-        data,
-      };
-      Storage.save(profile);
-      job.status = 'done';
-      job.profileId = profile.id;
-      this._emit();
-      window.dispatchEvent(new CustomEvent('jobs:done', { detail: { name: job.name, profileId: profile.id } }));
-      // Drop from active panel after a short success flash
-      setTimeout(() => {
-        this.active = this.active.filter(j => j.id !== job.id);
+    const maxAttempts = 2;
+    let lastError = null;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const data = await Research.run(apiKey, job.name, job.company, { myBio, myLinkedIn, attachedFiles });
+        const profile = {
+          id: Storage.uuid(),
+          name: data.name || job.name,
+          company: data.company || job.company || null,
+          createdAt: Date.now(),
+          data,
+        };
+        Storage.save(profile);
+        job.status = 'done';
+        job.profileId = profile.id;
         this._emit();
-      }, 1200);
-    } catch (e) {
-      job.status = 'failed';
-      job.error = e.message || String(e);
-      this._emit();
-      window.dispatchEvent(new CustomEvent('jobs:failed', { detail: { name: job.name, error: job.error } }));
+        window.dispatchEvent(new CustomEvent('jobs:done', { detail: { name: job.name, profileId: profile.id } }));
+        setTimeout(() => {
+          this.active = this.active.filter(j => j.id !== job.id);
+          if (this.runningCount() === 0) this._releaseWakeLock();
+          this._emit();
+        }, 1200);
+        return;
+      } catch (e) {
+        lastError = e;
+        const msg = (e && e.message) || String(e);
+        // Don't retry on auth/quota/permission errors
+        if (/401|403|invalid_api_key|authentication|permission|quota|insufficient/i.test(msg)) break;
+        if (attempt < maxAttempts) {
+          job.error = `${msg} (retrying)`;
+          this._emit();
+          await new Promise(r => setTimeout(r, 2000));
+          continue;
+        }
+      }
     }
+    job.status = 'failed';
+    job.error = (lastError && lastError.message) || String(lastError);
+    this._emit();
+    if (this.runningCount() === 0) this._releaseWakeLock();
+    window.dispatchEvent(new CustomEvent('jobs:failed', { detail: { name: job.name, error: job.error } }));
   },
 
   dismiss(jobId) {
     this.active = this.active.filter(j => j.id !== jobId);
+    if (this.runningCount() === 0) this._releaseWakeLock();
     this._emit();
   },
 
@@ -65,6 +101,7 @@ const Jobs = {
     job.status = 'running';
     job.startedAt = Date.now();
     job.error = null;
+    this._acquireWakeLock();
     this._run(job, Storage.getApiKey(), Storage.getMyBio(), Storage.getMyLinkedIn(), []);
     this._emit();
   },
@@ -77,3 +114,6 @@ const Jobs = {
     window.dispatchEvent(new CustomEvent('jobs:update', { detail: this.active.slice() }));
   },
 };
+
+// Wake lock is auto-released when page becomes hidden; re-acquire when visible again
+document.addEventListener('visibilitychange', () => Jobs._maybeReacquire());
