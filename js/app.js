@@ -19,6 +19,25 @@ const App = {
     this.$settings.addEventListener('click', () => this.go('settings'));
     this.$brand.addEventListener('click', () => this.go('home'));
 
+    // Global job event listeners (live across all views)
+    window.addEventListener('jobs:done', (e) => {
+      toast(`✓ ${e.detail.name} saved`);
+      if (this.state.view === 'home') {
+        this.refreshProfileList();
+      }
+    });
+    window.addEventListener('jobs:failed', (e) => {
+      toast(`✕ ${e.detail.name}: ${e.detail.error}`, true);
+    });
+    window.addEventListener('jobs:update', () => {
+      if (this.state.view === 'home') this.refreshActiveJobs();
+    });
+
+    // Tick elapsed time on running jobs
+    setInterval(() => {
+      if (this.state.view === 'home' && Jobs.runningCount() > 0) this.refreshActiveJobs();
+    }, 1000);
+
     this.go('home');
   },
 
@@ -65,7 +84,67 @@ const App = {
     document.getElementById('attach-input').addEventListener('change', (e) => this.handleAttach(e.target.files));
 
     this.refreshAttachedList();
+    this.refreshActiveJobs();
     this.refreshProfileList();
+  },
+
+  refreshActiveJobs() {
+    const $panel = document.getElementById('active-jobs');
+    if (!$panel) return;
+    const jobs = Jobs.active;
+    if (!jobs.length) {
+      $panel.classList.add('hidden');
+      $panel.innerHTML = '';
+      return;
+    }
+    $panel.classList.remove('hidden');
+    const rows = jobs.map(j => {
+      const elapsed = Math.floor((Date.now() - j.startedAt) / 1000);
+      if (j.status === 'running') {
+        return `<div class="job-row running">
+          <div class="job-pulse"></div>
+          <div class="job-info">
+            <div class="job-name">${escHtml(j.name)}${j.company ? ` <span class="job-co">@ ${escHtml(j.company)}</span>` : ''}</div>
+            <div class="job-meta">scanning · ${elapsed}s</div>
+          </div>
+        </div>`;
+      }
+      if (j.status === 'done') {
+        return `<div class="job-row done">
+          <div class="job-icon">✓</div>
+          <div class="job-info">
+            <div class="job-name">${escHtml(j.name)}</div>
+            <div class="job-meta">complete</div>
+          </div>
+        </div>`;
+      }
+      if (j.status === 'failed') {
+        return `<div class="job-row failed">
+          <div class="job-icon">✕</div>
+          <div class="job-info">
+            <div class="job-name">${escHtml(j.name)}</div>
+            <div class="job-meta">failed: ${escHtml(j.error || '')}</div>
+          </div>
+          <button class="job-retry" data-id="${j.id}" aria-label="Retry">↻</button>
+          <button class="job-dismiss" data-id="${j.id}" aria-label="Dismiss">✕</button>
+        </div>`;
+      }
+      return '';
+    }).join('');
+
+    $panel.innerHTML = `
+      <div class="active-jobs-header">
+        <span class="active-jobs-title">SCANNING</span>
+        <span class="active-jobs-count">${Jobs.runningCount()}</span>
+      </div>
+      ${rows}
+    `;
+    $panel.querySelectorAll('.job-dismiss').forEach(b => b.addEventListener('click', (e) => {
+      Jobs.dismiss(e.currentTarget.dataset.id);
+    }));
+    $panel.querySelectorAll('.job-retry').forEach(b => b.addEventListener('click', (e) => {
+      Jobs.retry(e.currentTarget.dataset.id);
+    }));
   },
 
   async handleAttach(fileList) {
@@ -231,61 +310,26 @@ const App = {
     });
   },
 
-  // ─── Research run ─────────────────────
-  async runResearch(names) {
+  // ─── Research run (fire-and-forget, parallel) ─────────────────────
+  runResearch(names) {
     const apiKey = Storage.getApiKey();
-    const myBio = Storage.getMyBio();
-    const attachedFiles = this.state.attachedFiles.slice();
-
-    this.go('loading', {
-      title: `SCANNING ${names.length} TARGET${names.length > 1 ? 'S' : ''}…`,
-      sub: 'Querying open sources',
-      steps: names.map(n => n.name),
-    });
-
-    const $log = document.getElementById('loading-log');
-    const $sub = document.getElementById('loading-sub');
-
-    let lastSavedId = null;
-    for (let i = 0; i < names.length; i++) {
-      const { name, company } = names[i];
-      $sub.textContent = `[${i + 1}/${names.length}] ${name}`;
-      $log.children[i]?.classList.add('active');
-      try {
-        const data = await Research.run(apiKey, name, company || null, {
-          myBio,
-          attachedFiles,
-          onProgress: (msg) => {
-            $sub.textContent = `[${i + 1}/${names.length}] ${name} ${msg}`;
-          },
-        });
-        const profile = {
-          id: Storage.uuid(),
-          name: data.name || name,
-          company: data.company || company || null,
-          createdAt: Date.now(),
-          data,
-        };
-        Storage.save(profile);
-        lastSavedId = profile.id;
-        $log.children[i]?.classList.remove('active');
-        $log.children[i]?.classList.add('done');
-      } catch (e) {
-        console.error(e);
-        $log.children[i]?.classList.remove('active');
-        toast(`${name}: ${e.message}`, true);
-      }
+    if (!apiKey) {
+      toast('Add API key in Settings first', true);
+      this.go('settings');
+      return;
     }
-
-    // Clear attached files after a successful batch
+    const attachedFiles = this.state.attachedFiles.slice();
+    Jobs.start(names, { attachedFiles });
     this.state.attachedFiles = [];
 
-    if (names.length === 1 && lastSavedId) {
-      this.go('profile', { id: lastSavedId });
-    } else {
-      this.go('home');
-      toast(`✓ ${names.length} profiles saved`);
-    }
+    // Reset the input so the next name can be typed immediately
+    const inp = document.getElementById('names-input');
+    if (inp) inp.value = '';
+
+    if (this.state.view !== 'home') this.go('home');
+    else { this.refreshAttachedList(); this.refreshActiveJobs(); }
+
+    toast(`▶ ${names.length} search${names.length > 1 ? 'es' : ''} running in background`);
   },
 
   bindLoading(opts) {
