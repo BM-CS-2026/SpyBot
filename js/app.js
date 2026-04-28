@@ -1,6 +1,6 @@
 // App — view router + UI controller
 
-const APP_VERSION = '1.0.9';   // bump this whenever sw.js cache name changes
+const APP_VERSION = '1.0.10';  // bump this whenever sw.js cache name changes
 
 const App = {
   state: {
@@ -145,6 +145,27 @@ const App = {
           <button class="job-dismiss" data-id="${j.id}" aria-label="Dismiss">✕</button>
         </div>`;
       }
+      if (j.status === 'not_found') {
+        const sugs = j.notFoundData?.suggestions || [];
+        const reason = j.notFoundData?.reason || '';
+        return `<div class="job-row notfound">
+          <div class="job-row-top">
+            <div class="job-icon notfound-icon">?</div>
+            <div class="job-info">
+              <div class="job-name">${escHtml(j.name)}</div>
+              <div class="job-meta">not found${reason ? ` · ${escHtml(reason)}` : ''}</div>
+            </div>
+            <button class="job-dismiss" data-id="${j.id}" aria-label="Dismiss">✕</button>
+          </div>
+          ${sugs.length ? `<div class="job-suggestions">
+            <div class="suggestions-title">Did you mean?</div>
+            ${sugs.map((s, i) => `<button class="suggest-chip" data-job="${j.id}" data-i="${i}">
+              <div class="sg-name">${escHtml(s.name)}${s.company ? ` <span class="sg-co">@ ${escHtml(s.company)}</span>` : ''}</div>
+              ${s.why ? `<div class="sg-why">${escHtml(s.why)}</div>` : ''}
+            </button>`).join('')}
+          </div>` : ''}
+        </div>`;
+      }
       return '';
     }).join('');
 
@@ -162,6 +183,16 @@ const App = {
     }));
     $panel.querySelectorAll('.job-retry').forEach(b => b.addEventListener('click', (e) => {
       Jobs.retry(e.currentTarget.dataset.id);
+    }));
+    $panel.querySelectorAll('.suggest-chip').forEach(b => b.addEventListener('click', (e) => {
+      const jobId = e.currentTarget.dataset.job;
+      const i = parseInt(e.currentTarget.dataset.i, 10);
+      const job = Jobs.active.find(j => j.id === jobId);
+      const sug = job?.notFoundData?.suggestions?.[i];
+      if (!sug) return;
+      Jobs.dismiss(jobId);
+      Jobs.start([{ name: sug.name, company: sug.company || null }]);
+      toast(`▶ Trying ${sug.name}`);
     }));
   },
 

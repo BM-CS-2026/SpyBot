@@ -136,6 +136,30 @@ Then output ONLY this JSON object (no other text, no code fences):
   "sources": [{"title": "Source title", "url": "https://..."}]
 }
 
+SPECIAL CASE — NOT FOUND:
+If after thorough searching you genuinely cannot find this specific person (no LinkedIn, no news, no academic record, no social presence), output ONLY this alternative JSON instead of the full profile:
+
+{
+  "not_found": true,
+  "searched_for": "${target}",
+  "reason": "1 to 2 sentences on what you tried and why nothing matched",
+  "suggestions": [
+    {"name": "Alternative spelling 1", "company": "company hint or null", "why": "1 short sentence: 'common Hebrew variant', 'with double t', 'transliterated from Cyrillic', 'maybe full first name', etc."},
+    {"name": "Alternative spelling 2", "company": "...", "why": "..."}
+  ]
+}
+
+Provide 3 to 6 suggestions. Focus on:
+- Spelling variants differing by 1 to 2 letters (Ishay/Ishai, Atar/Attar, Steven/Stephen, Dmitri/Dmitry)
+- Transliteration variants (Hebrew, Arabic, Cyrillic, East Asian)
+- Nickname vs full form (Bob/Robert, Sasha/Alexander, Liz/Elizabeth)
+- Reversed first/last name order
+- Same surname at the same company (if a company hint was given)
+
+Run at least one quick web search per suggestion to confirm the variant matches a real person. Do not invent names.
+
+Use this not_found schema ONLY when truly nothing relevant turns up. If you find ANY data on the original target, even partial, fill out the regular profile schema.
+
 Final reminders:
 - Output ONLY the JSON object. No leading prose. No trailing prose. No markdown.
 - For unknown facts, use empty array [] or null. Do NOT invent.

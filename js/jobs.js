@@ -141,6 +141,20 @@ const Jobs = {
       if (!myResult) throw new Error('Result not found in batch');
 
       const data = Research.parseResult(myResult, job.name);
+
+      // Not-found path: keep the row, attach suggestions, do not save profile
+      if (data.not_found) {
+        job.status = 'not_found';
+        job.notFoundData = {
+          reason: data.reason || '',
+          suggestions: Array.isArray(data.suggestions) ? data.suggestions : [],
+        };
+        this._persist();
+        this._emit();
+        window.dispatchEvent(new CustomEvent('jobs:notfound', { detail: { name: job.name, suggestions: job.notFoundData.suggestions } }));
+        return;
+      }
+
       const profile = {
         id: Storage.uuid(),
         name: data.name || job.name,

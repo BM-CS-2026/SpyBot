@@ -699,6 +699,50 @@ textarea:focus, input:focus { outline: none; border-color: var(--cyan); box-shad
 .job-row.done .job-icon { background: var(--cyan); color: var(--bg-0); box-shadow: 0 0 12px var(--cyan-glow); }
 .job-row.failed .job-icon { background: var(--rose); color: var(--bg-0); }
 .job-row.failed .job-meta { color: var(--rose); }
+
+/* Not-found row + suggestion chips */
+.job-row.notfound { flex-direction: column; align-items: stretch; }
+.job-row.notfound .job-row-top { display: flex; align-items: center; gap: 14px; }
+.notfound-icon {
+  background: var(--amber);
+  color: var(--bg-0);
+  font-weight: 700;
+}
+.job-row.notfound .job-meta { color: var(--amber); white-space: normal; }
+.job-suggestions {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+.suggestions-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--cyan-soft);
+  margin-bottom: 8px;
+}
+.suggest-chip {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--bg-2);
+  border: 1px solid var(--line-bright);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  color: var(--text);
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.suggest-chip:hover, .suggest-chip:active {
+  border-color: var(--cyan);
+  background: var(--bg-3);
+  transform: translateX(2px);
+}
+.suggest-chip .sg-name { font-weight: 600; font-size: 14px; }
+.suggest-chip .sg-co { color: var(--text-faint); font-weight: 400; font-size: 13px; }
+.suggest-chip .sg-why { font-size: 12px; color: var(--text-dim); margin-top: 3px; line-height: 1.4; }
 .job-dismiss, .job-retry {
   background: transparent;
   border: 1px solid var(--line);
