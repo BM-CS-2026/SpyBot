@@ -28,20 +28,55 @@ function buildResearchPrompt(name, company, myBio, attachedTextBlobs) {
   return `Research this person thoroughly: ${target}
 Today's date: ${today}
 ${bioBlock}${textContext}
-Run web searches covering ALL of these categories:
-1. Current role, title, employer, location
-2. LinkedIn profile and recent posts
-3. Career history (full chronology)
-4. Education (degrees, institutions, years)
-5. Patents (Google Patents / USPTO)
-6. Academic publications, papers, books
-7. Twitter/X and other social media
-8. Awards, board seats, keynote talks
-9. Recent news, interviews, press (last 2 years)
-10. Hobbies, interests, places lived
-11. A profile photo URL (LinkedIn headshot, company "about" page, news photo)
+SEARCH AGGRESSIVELY. Run MANY web searches with varied queries. Do not stop after the first few hits. Use AT LEAST 15 to 25 distinct searches. Vary the queries: name alone, name + company, name + city, name + topic, name + university, name + "interview", name + "podcast", name + "speaker", name + "patent", name + "@" (for handles).
+
+Cover ALL of these categories with explicit searches:
+
+PROFESSIONAL & CAREER
+- Current role, title, employer, location, team
+- LinkedIn profile (run a "linkedin.com/in/${name}" search)
+- Career history (full chronology, every employer with dates)
+- Education (degrees, institutions, years, advisors)
+- Patents (Google Patents, USPTO, EPO)
+- Academic publications (Google Scholar, ResearchGate, ORCID)
+- Books, book chapters, technical reports
+- Conference talks, keynotes, panels (search "${name} speaker", "${name} keynote", "${name} talk")
+- Podcast appearances (search "${name} podcast")
+- Interviews and press features (search "${name} interview")
+- Awards, fellowships, board seats, advisory roles
+
+SOCIAL MEDIA — search EACH platform explicitly:
+- LinkedIn: profile, posts, articles, comments, groups
+- Twitter / X: handle, bio, recent posts, pinned post, what they retweet, who they reply to
+- Facebook (public posts and pages)
+- Instagram (handle, public bio)
+- YouTube (channel, talks, videos)
+- TikTok (if relevant to their field)
+- Threads, Bluesky, Mastodon (newer social)
+- GitHub (username, repos, README profile, contribution patterns)
+- Medium and Substack (articles authored)
+- ResearchGate, Academia.edu (academics)
+- Reddit (username if public)
+- Personal blog or website (search "${name} blog" and "${name} personal website")
+
+NEWS, MENTIONS, PRESENCE
+- Recent news (last 2 years): search news sites directly
+- Press releases citing them
+- Quotes in articles
+- Court records, SEC filings, charity registrations (only if public)
+- Alumni magazine features
+- Local newspaper mentions
+
+PERSONAL CONTEXT
+- Hobbies, interests, sports, causes (look in social posts and interviews)
+- Places lived, studied, worked (be specific: cities, neighborhoods)
+- Family or partner mentions (only if openly public, e.g. spouse credited in book)
+- Volunteer work, nonprofits, religious or community involvement
+- A profile photo URL (LinkedIn headshot, company "about" page, conference speaker photo, news photo)
 
 If attached files (PDFs/images/text) were provided, treat them as PRIMARY source material and integrate their content with web findings.
+
+For social handles found, include them in professional_details.social with their URL. Note recent post themes if observable.
 
 Then output ONLY this JSON object (no other text, no code fences):
 
@@ -140,7 +175,7 @@ const Research = {
         {
           type: 'web_search_20250305',
           name: 'web_search',
-          max_uses: 20,
+          max_uses: 30,
         },
       ],
       messages: [{ role: 'user', content: contentBlocks }],
