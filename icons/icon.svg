@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="iris" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#4dffe6"/>
+      <stop offset="60%" stop-color="#00b8a3"/>
+      <stop offset="100%" stop-color="#003d36"/>
+    </radialGradient>
+    <radialGradient id="bg" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#131a2c"/>
+      <stop offset="100%" stop-color="#060912"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="220" fill="none" stroke="#4dffe6" stroke-width="6" stroke-dasharray="14 26" opacity="0.5"/>
+  <circle cx="256" cy="256" r="180" fill="none" stroke="#4dffe6" stroke-width="3" opacity="0.3"/>
+  <path d="M56 256 Q 256 76 456 256 Q 256 436 56 256 Z" fill="none" stroke="#4dffe6" stroke-width="14" stroke-linejoin="round"/>
+  <circle cx="256" cy="256" r="88" fill="url(#iris)"/>
+  <circle cx="256" cy="256" r="32" fill="#0a0e1a"/>
+  <circle cx="280" cy="232" r="12" fill="#fff"/>
+  <line x1="256" y1="20" x2="256" y2="60" stroke="#4dffe6" stroke-width="8" stroke-linecap="round"/>
+  <line x1="256" y1="452" x2="256" y2="492" stroke="#4dffe6" stroke-width="8" stroke-linecap="round"/>
+  <line x1="20" y1="256" x2="60" y2="256" stroke="#4dffe6" stroke-width="8" stroke-linecap="round"/>
+  <line x1="452" y1="256" x2="492" y2="256" stroke="#4dffe6" stroke-width="8" stroke-linecap="round"/>
+</svg>

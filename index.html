@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#0a0e1a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="SpyBot" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <title>SpyBot</title>
+</head>
+<body>
+  <div id="app">
+    <!-- Top bar -->
+    <header class="topbar">
+      <button id="back-btn" class="icon-btn hidden" aria-label="Back">‹</button>
+      <div class="brand" id="brand">
+        <svg class="brand-logo" viewBox="0 0 64 64" aria-hidden="true">
+          <defs>
+            <radialGradient id="iris" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#4dffe6"/>
+              <stop offset="60%" stop-color="#00b8a3"/>
+              <stop offset="100%" stop-color="#003d36"/>
+            </radialGradient>
+          </defs>
+          <circle cx="32" cy="32" r="30" fill="none" stroke="#4dffe6" stroke-width="1.5" stroke-dasharray="2 4"/>
+          <path d="M6 32 Q 32 8 58 32 Q 32 56 6 32 Z" fill="none" stroke="#4dffe6" stroke-width="2"/>
+          <circle cx="32" cy="32" r="11" fill="url(#iris)"/>
+          <circle cx="32" cy="32" r="4" fill="#0a0e1a"/>
+          <circle cx="35" cy="29" r="1.5" fill="#fff"/>
+          <line x1="32" y1="2" x2="32" y2="10" stroke="#4dffe6" stroke-width="1.5"/>
+          <line x1="32" y1="54" x2="32" y2="62" stroke="#4dffe6" stroke-width="1.5"/>
+          <line x1="2" y1="32" x2="10" y2="32" stroke="#4dffe6" stroke-width="1.5"/>
+          <line x1="54" y1="32" x2="62" y2="32" stroke="#4dffe6" stroke-width="1.5"/>
+        </svg>
+        <span class="brand-name">SPY<span class="brand-accent">BOT</span></span>
+      </div>
+      <button id="settings-btn" class="icon-btn" aria-label="Settings">⚙</button>
+    </header>
+
+    <main id="main"></main>
+  </div>
+
+  <!-- Templates -->
+  <template id="tmpl-home">
+    <section class="view view-home">
+      <div class="hero">
+        <div class="hero-tag">TARGET ACQUISITION</div>
+        <h1 class="hero-title">Who's the mark?</h1>
+        <p class="hero-sub">Type names or capture a screenshot. SpyBot will dig.</p>
+      </div>
+
+      <div class="card input-card">
+        <label for="names-input" class="field-label">NAMES</label>
+        <textarea id="names-input" rows="3" placeholder="Jane Doe&#10;John Smith @ Acme Corp&#10;Maria Garcia"></textarea>
+        <div class="hint">One per line. Optional: add <code>@ Company</code> for sharper results.</div>
+        <div class="actions">
+          <button id="run-text-btn" class="btn btn-primary">▶ RUN SEARCH</button>
+          <button id="capture-btn" class="btn btn-ghost">📷 SCAN IMAGE</button>
+          <input type="file" id="capture-input" accept="image/*" capture="environment" hidden />
+        </div>
+      </div>
+
+      <div class="dossier">
+        <div class="dossier-header">
+          <span class="dossier-title">DOSSIER</span>
+          <span class="dossier-count" id="dossier-count">0</span>
+        </div>
+        <div id="profile-list" class="profile-list"></div>
+        <div id="empty-state" class="empty-state hidden">
+          <div class="empty-icon">∅</div>
+          <div>No profiles yet. Run your first search.</div>
+        </div>
+      </div>
+    </section>
+  </template>
+
+  <template id="tmpl-confirm">
+    <section class="view view-confirm">
+      <div class="hero">
+        <div class="hero-tag">VERIFY TARGETS</div>
+        <h1 class="hero-title">Names extracted</h1>
+        <p class="hero-sub">Edit any names below, remove false hits, then confirm.</p>
+      </div>
+      <div class="card">
+        <div id="extracted-names" class="name-chips"></div>
+        <button id="add-name-btn" class="btn btn-ghost btn-small">+ Add name</button>
+      </div>
+      <div class="action-row">
+        <button id="cancel-confirm" class="btn btn-ghost">Cancel</button>
+        <button id="confirm-run" class="btn btn-primary">▶ RUN ON THESE</button>
+      </div>
+    </section>
+  </template>
+
+  <template id="tmpl-loading">
+    <section class="view view-loading">
+      <div class="radar">
+        <div class="radar-ring"></div>
+        <div class="radar-ring r2"></div>
+        <div class="radar-sweep"></div>
+        <div class="radar-dot"></div>
+      </div>
+      <h2 class="loading-title" id="loading-title">SCANNING…</h2>
+      <p class="loading-sub" id="loading-sub">Querying open sources</p>
+      <ul class="loading-log" id="loading-log"></ul>
+    </section>
+  </template>
+
+  <template id="tmpl-profile">
+    <section class="view view-profile" id="profile-view"></section>
+  </template>
+
+  <template id="tmpl-settings">
+    <section class="view view-settings">
+      <div class="hero">
+        <div class="hero-tag">CLASSIFIED</div>
+        <h1 class="hero-title">Settings</h1>
+      </div>
+      <div class="card">
+        <label class="field-label" for="api-key-input">ANTHROPIC API KEY</label>
+        <input type="password" id="api-key-input" placeholder="sk-ant-..." autocomplete="off" />
+        <div class="hint">Stored locally on this device only. Get one at <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a>.</div>
+        <div class="actions">
+          <button id="save-key-btn" class="btn btn-primary">SAVE</button>
+          <button id="clear-key-btn" class="btn btn-ghost">CLEAR</button>
+        </div>
+        <div id="key-status" class="key-status"></div>
+      </div>
+      <div class="card danger-card">
+        <label class="field-label">DANGER ZONE</label>
+        <button id="wipe-all-btn" class="btn btn-danger">🗑 WIPE ALL PROFILES</button>
+      </div>
+      <div class="card about-card">
+        <div class="about-line">SpyBot v1.0</div>
+        <div class="about-line dim">Powered by Claude + web search</div>
+      </div>
+    </section>
+  </template>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Scripts -->
+  <script src="js/storage.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/research.js"></script>
+  <script src="js/vision.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
