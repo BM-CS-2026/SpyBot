@@ -13,13 +13,20 @@ CORE RULES:
 - Bullet items use the {main, more} object form. The "main" must be a punchy short headline of 14 words or fewer. The "more" is optional, holds 1 to 2 sentences of nuance, only when it adds real value.
 - The glossary MUST define every technical term, journal, acronym, or specialty area mentioned anywhere in the profile in plain English a non-expert can understand.`;
 
-function buildResearchPrompt(name, company, myBio, attachedTextBlobs) {
+function buildResearchPrompt(name, company, myBio, myLinkedIn, attachedTextBlobs) {
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   const target = company ? `${name} at ${company}` : name;
 
-  const bioBlock = myBio && myBio.trim()
-    ? `\n\nABOUT THE USER (find common ground with this person):\n${myBio.trim()}\n`
-    : '\n\nNO USER BIO PROVIDED. Set common_ground arrays to empty [] and add a single item explaining the bio is needed.\n';
+  const userParts = [];
+  if (myLinkedIn && myLinkedIn.trim()) {
+    userParts.push(`User's LinkedIn profile (look this up via web search to learn the user's career, education, and locations): ${myLinkedIn.trim()}`);
+  }
+  if (myBio && myBio.trim()) {
+    userParts.push(`User's bio (free-form supplement):\n${myBio.trim()}`);
+  }
+  const bioBlock = userParts.length
+    ? `\n\nABOUT THE USER (use this to find common ground with the target):\n${userParts.join('\n\n')}\n\nIMPORTANT: Do at least one explicit web search on the user's LinkedIn URL (or "site:linkedin.com/in/" pattern) so you actually know the user's background. Then COMPARE the user and the target across employers, schools, cities, fields, projects, eras, and interests.\n`
+    : '\n\nNO USER LINKEDIN OR BIO PROVIDED. Set common_ground arrays to empty [] and add a single item asking the user to fill in their LinkedIn URL or bio in Settings.\n';
 
   const textContext = attachedTextBlobs && attachedTextBlobs.length
     ? `\n\nATTACHED TEXT CONTEXT (user-provided info about the target, treat as primary source):\n${attachedTextBlobs.map((t, i) => `--- file ${i + 1} ---\n${t}`).join('\n\n')}\n`
@@ -140,7 +147,7 @@ Final reminders:
 
 const Research = {
   async run(apiKey, name, company, options = {}) {
-    const { myBio, attachedFiles, onProgress } = options;
+    const { myBio, myLinkedIn, attachedFiles, onProgress } = options;
     onProgress?.('Composing query');
 
     // Split attached files by type
@@ -163,7 +170,7 @@ const Research = {
       }
     }
 
-    const prompt = buildResearchPrompt(name, company, myBio, textBlobs);
+    const prompt = buildResearchPrompt(name, company, myBio, myLinkedIn, textBlobs);
     contentBlocks.push({ type: 'text', text: prompt });
 
     onProgress?.('Querying Claude + web search');

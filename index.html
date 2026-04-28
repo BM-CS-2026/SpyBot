@@ -137,9 +137,19 @@
         <div id="key-status" class="key-status"></div>
       </div>
       <div class="card">
-        <label class="field-label" for="my-profile-input">YOUR PROFILE (for "what we have in common")</label>
-        <textarea id="my-profile-input" rows="6" placeholder="Anything about you that helps SpyBot find common ground:&#10;• Current role / company&#10;• Past roles, schools&#10;• Cities you've lived in&#10;• Interests, hobbies&#10;Free-form, write as much or little as you want."></textarea>
-        <div class="hint">Used only to find shared experiences with each target. Stored locally.</div>
+        <label class="field-label" for="my-linkedin-input">YOUR LINKEDIN URL</label>
+        <input type="text" id="my-linkedin-input" placeholder="https://www.linkedin.com/in/yourname/" autocomplete="off" />
+        <div class="hint">SpyBot will look up your profile to find shared experiences with each target.</div>
+        <div class="actions">
+          <button id="save-linkedin-btn" class="btn btn-primary">SAVE</button>
+          <button id="reset-linkedin-btn" class="btn btn-ghost">RESET DEFAULT</button>
+        </div>
+        <div id="linkedin-status" class="key-status"></div>
+      </div>
+      <div class="card">
+        <label class="field-label" for="my-profile-input">YOUR BIO (extra context for "what we have in common")</label>
+        <textarea id="my-profile-input" rows="6" placeholder="Anything beyond LinkedIn that helps SpyBot find common ground:&#10;• Past roles, schools&#10;• Cities you've lived in&#10;• Interests, hobbies&#10;Free-form, write as much or little as you want."></textarea>
+        <div class="hint">Optional supplement to LinkedIn. Stored locally.</div>
         <div class="actions">
           <button id="save-bio-btn" class="btn btn-primary">SAVE BIO</button>
         </div>

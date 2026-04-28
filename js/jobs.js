@@ -7,6 +7,7 @@ const Jobs = {
   start(names, options = {}) {
     const apiKey = Storage.getApiKey();
     const myBio = Storage.getMyBio();
+    const myLinkedIn = Storage.getMyLinkedIn();
     const attachedFiles = options.attachedFiles || [];
 
     names.forEach(n => {
@@ -20,14 +21,14 @@ const Jobs = {
         profileId: null,
       };
       this.active.push(job);
-      this._run(job, apiKey, myBio, attachedFiles);
+      this._run(job, apiKey, myBio, myLinkedIn, attachedFiles);
     });
     this._emit();
   },
 
-  async _run(job, apiKey, myBio, attachedFiles) {
+  async _run(job, apiKey, myBio, myLinkedIn, attachedFiles) {
     try {
-      const data = await Research.run(apiKey, job.name, job.company, { myBio, attachedFiles });
+      const data = await Research.run(apiKey, job.name, job.company, { myBio, myLinkedIn, attachedFiles });
       const profile = {
         id: Storage.uuid(),
         name: data.name || job.name,
@@ -64,7 +65,7 @@ const Jobs = {
     job.status = 'running';
     job.startedAt = Date.now();
     job.error = null;
-    this._run(job, Storage.getApiKey(), Storage.getMyBio(), []);
+    this._run(job, Storage.getApiKey(), Storage.getMyBio(), Storage.getMyLinkedIn(), []);
     this._emit();
   },
 

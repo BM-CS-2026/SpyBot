@@ -424,6 +424,39 @@ const App = {
       toast('API key cleared');
     });
 
+    // LinkedIn URL
+    const $li = document.getElementById('my-linkedin-input');
+    const $liStatus = document.getElementById('linkedin-status');
+    const liUrl = Storage.getMyLinkedIn();
+    $li.value = liUrl;
+    if (liUrl) {
+      $liStatus.textContent = `✓ LinkedIn set`;
+      $liStatus.className = 'key-status ok';
+    } else {
+      $liStatus.textContent = '⚠ No LinkedIn URL set';
+      $liStatus.className = 'key-status miss';
+    }
+    document.getElementById('save-linkedin-btn').addEventListener('click', () => {
+      const u = $li.value.trim();
+      Storage.setMyLinkedIn(u);
+      if (u) {
+        $liStatus.textContent = `✓ LinkedIn saved`;
+        $liStatus.className = 'key-status ok';
+        toast('LinkedIn URL saved');
+      } else {
+        $liStatus.textContent = '⚠ LinkedIn cleared';
+        $liStatus.className = 'key-status miss';
+        toast('LinkedIn URL cleared');
+      }
+    });
+    document.getElementById('reset-linkedin-btn').addEventListener('click', () => {
+      localStorage.removeItem('spybot:myLinkedIn');
+      $li.value = Storage.getMyLinkedIn();
+      $liStatus.textContent = `✓ Reset to default`;
+      $liStatus.className = 'key-status ok';
+      toast('Reset to default LinkedIn');
+    });
+
     // Bio
     const $bio = document.getElementById('my-profile-input');
     const $bioStatus = document.getElementById('bio-status');

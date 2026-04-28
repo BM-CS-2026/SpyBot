@@ -3,6 +3,8 @@
 const KEY_PROFILES = 'spybot:profiles';
 const KEY_API = 'spybot:apiKey';
 const KEY_BIO = 'spybot:myBio';
+const KEY_LINKEDIN = 'spybot:myLinkedIn';
+const DEFAULT_LINKEDIN = 'https://www.linkedin.com/in/boazmanash/';
 
 const Storage = {
   getApiKey() {
@@ -18,6 +20,14 @@ const Storage = {
   setMyBio(bio) {
     if (bio) localStorage.setItem(KEY_BIO, bio);
     else localStorage.removeItem(KEY_BIO);
+  },
+  getMyLinkedIn() {
+    const v = localStorage.getItem(KEY_LINKEDIN);
+    return v === null ? DEFAULT_LINKEDIN : v;
+  },
+  setMyLinkedIn(url) {
+    // Save explicit empty string so a cleared value sticks (does not revert to default)
+    localStorage.setItem(KEY_LINKEDIN, url || '');
   },
   list() {
     try {
