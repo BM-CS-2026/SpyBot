@@ -98,22 +98,22 @@ Then output ONLY this JSON object (no other text, no code fences):
   ],
   "common_ground": {
     "current": [
-      {"main": "Specific overlap right now between user and target", "more": "Why it matters or what to say about it"}
+      {"main": "Specific overlap right now", "more": "EVIDENCE on both sides. Format: 'You: <fact from user LinkedIn/bio>. Target: <fact from target>.'"}
     ],
     "historical": [
-      {"main": "Specific past overlap (school, city, employer, project, era)", "more": "Optional context"}
+      {"main": "Specific past overlap (school, city, employer, project)", "more": "EVIDENCE on both sides. Format: 'You: <fact>. Target: <fact>.'"}
     ]
   },
   "career_timeline": [
     {"years": "2020 to present", "role": "Title", "company": "Company", "note": "1 short sentence on what they did/are doing"}
   ],
   "conversation_small_talk": {
-    "personal_hooks": [{"main": "Specific hook tied to their actual recent work", "more": "Optional extra context"}],
-    "previous_achievements": [{"main": "Specific past win", "more": null}],
-    "hobbies_interests": [{"main": "Hobby or interest", "more": null}],
-    "geography_facts": [{"main": "Fact about a place they live or work", "more": null}],
-    "history_facts": [{"main": "Historical fact about a place they lived, studied, worked", "more": null}],
-    "field_context": [{"main": "Light context about their field", "more": null}]
+    "personal_hooks": [{"main": "Specific hook tied to their actual recent work", "more": "Optional extra context", "source": "https://... where you found this"}],
+    "previous_achievements": [{"main": "Specific past win", "more": null, "source": "https://..."}],
+    "hobbies_interests": [{"main": "Hobby or interest", "more": null, "source": "https://..."}],
+    "geography_facts": [{"main": "Fact about a place they live or work", "more": null, "source": "https://..."}],
+    "history_facts": [{"main": "Historical fact about a place they lived, studied, worked", "more": null, "source": "https://..."}],
+    "field_context": [{"main": "Light context about their field", "more": null, "source": "https://..."}]
   },
   "professional_details": {
     "education": [{"main": "Degree, Institution, Year", "more": null}],
@@ -160,11 +160,24 @@ Run at least one quick web search per suggestion to confirm the variant matches 
 
 Use this not_found schema ONLY when truly nothing relevant turns up. If you find ANY data on the original target, even partial, fill out the regular profile schema.
 
+COMMON_GROUND RIGOR (CRITICAL — many past mistakes here):
+- Output an overlap ONLY when you have HARD EVIDENCE on BOTH sides. Both the user's record and the target's record must each independently state the same school / city / employer / project / year.
+- DO NOT infer. DO NOT assume. "Both Israeli", "both engineers", "both in tech" are NOT overlaps.
+- Same country alone is NOT an overlap. Same era alone is NOT an overlap. Same broad industry alone is NOT an overlap.
+- For each item, the "more" field MUST be in the format: "You: <specific verifiable fact about user>. Target: <specific verifiable fact about target>." If you cannot fill both halves with concrete cited facts, OMIT the item.
+- An EMPTY common_ground array is ALWAYS BETTER than a wrong overlap. Returning [] when no real overlap exists is the correct behavior.
+- NEVER invent a school year, city date, or employer to make an overlap fit. If the dates don't match (e.g. user at MIT 1998-2002, target at MIT 2010-2014), that is NOT an overlap unless you specifically explain "alumni of same institution".
+
+CONVERSATION_SMALL_TALK SOURCES:
+- For EVERY item under conversation_small_talk, include a "source" URL pointing to where you found the fact. This is so the user can verify and click through.
+- The source is for the TARGET's information only. Never link to the user's own LinkedIn or bio sources.
+- If a fact is general knowledge (e.g. a famous historical fact about a city) and you didn't find a single source, use null.
+- The source must be a real URL you actually found in your web searches, not a guess or a search-page URL.
+
 Final reminders:
 - Output ONLY the JSON object. No leading prose. No trailing prose. No markdown.
 - For unknown facts, use empty array [] or null. Do NOT invent.
 - Each "main" headline is 14 words or fewer. Do NOT cram everything into "main". Use "more" for nuance.
-- "common_ground" must be SPECIFIC: name the school, the city, the company, the topic. If no overlaps found, return []. Do not invent.
 - The glossary must define ALL acronyms and technical terms used elsewhere in the profile.
 - No em dashes or double hyphens anywhere.`;
 }

@@ -1,6 +1,6 @@
 // App — view router + UI controller
 
-const APP_VERSION = '1.0.12';  // bump this whenever sw.js cache name changes
+const APP_VERSION = '1.0.13';  // bump this whenever sw.js cache name changes
 
 const App = {
   state: {

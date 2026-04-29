@@ -456,6 +456,26 @@ textarea:focus, input:focus { outline: none; border-color: var(--cyan); box-shad
 }
 .bullet-list li.expandable.expanded .bullet-more { display: block; }
 
+/* Source chip on small-talk bullets */
+.bullet-source {
+  display: inline-block;
+  margin-top: 6px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--cyan-soft);
+  text-decoration: none;
+  border: 1px solid var(--cyan-soft);
+  padding: 3px 8px;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+.bullet-source:hover, .bullet-source:active {
+  color: var(--cyan);
+  border-color: var(--cyan);
+  background: rgba(77, 255, 230, 0.08);
+}
+
 .subgroup { margin-top: 14px; }
 .subgroup:first-child { margin-top: 0; }
 .subgroup-title {

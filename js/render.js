@@ -64,13 +64,18 @@ const Render = {
     if (item && typeof item === 'object') {
       const main = item.main || '';
       const more = item.more;
+      const source = item.source;
+      const sourceLink = source && /^https?:\/\//i.test(String(source))
+        ? `<a class="bullet-source" href="${escAttr(source)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">↗ source</a>`
+        : '';
       if (more && String(more).trim()) {
         return `<li class="expandable" onclick="this.classList.toggle('expanded')">
           <div class="bullet-main">${escHtml(main)}<span class="bullet-toggle">▾</span></div>
           <div class="bullet-more">${escHtml(more)}</div>
+          ${sourceLink}
         </li>`;
       }
-      return `<li><div class="bullet-main">${escHtml(main)}</div></li>`;
+      return `<li><div class="bullet-main">${escHtml(main)}</div>${sourceLink}</li>`;
     }
     return `<li><div class="bullet-main">${escHtml(String(item))}</div></li>`;
   },
