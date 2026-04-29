@@ -1,6 +1,6 @@
 // App — view router + UI controller
 
-const APP_VERSION = '1.0.11';  // bump this whenever sw.js cache name changes
+const APP_VERSION = '1.0.12';  // bump this whenever sw.js cache name changes
 
 const App = {
   state: {
@@ -35,9 +35,14 @@ const App = {
       if (this.state.view === 'home') this.refreshActiveJobs();
     });
 
-    // Tick elapsed time on running jobs
+    // Tick elapsed time on running jobs (text-only, leaves radar DOM intact)
     setInterval(() => {
-      if (this.state.view === 'home' && Jobs.runningCount() > 0) this.refreshActiveJobs();
+      if (this.state.view !== 'home' || !this._jobRows || !this._jobRows.size) return;
+      Jobs.active.forEach(j => {
+        if (j.status !== 'running') return;
+        const $row = this._jobRows.get(j.id);
+        if ($row) this._patchJobRow($row, j);
+      });
     }, 1000);
 
     Jobs.init();
@@ -96,95 +101,167 @@ const App = {
     const $panel = document.getElementById('active-jobs');
     if (!$panel) return;
     const jobs = Jobs.active;
+
     if (!jobs.length) {
       $panel.classList.add('hidden');
       $panel.innerHTML = '';
+      this._jobRows = null;
       return;
     }
+
     $panel.classList.remove('hidden');
-    const rows = jobs.map(j => {
-      const startedAt = j.submittedAt || j.startedAt || Date.now();
-      const elapsedSec = Math.floor((Date.now() - startedAt) / 1000);
-      const elapsed = elapsedSec < 90
-        ? `${elapsedSec}s`
-        : `${Math.floor(elapsedSec / 60)}m ${elapsedSec % 60}s`;
-      const isPending = ['submitting', 'queued', 'processing', 'running'].includes(j.status);
-      if (isPending) {
-        return `<div class="job-row running">
-          <div class="job-radar">
-            <div class="ring"></div>
-            <div class="ring r2"></div>
-            <div class="sweep"></div>
-            <div class="dot"></div>
-            <div class="reticle"></div>
-          </div>
-          <div class="job-info">
-            <div class="job-name">${escHtml(j.name)}${j.company ? ` <span class="job-co">@ ${escHtml(j.company)}</span>` : ''}</div>
-            <div class="job-meta">▸ ${escHtml(j.progress || j.status)} · ${elapsed}</div>
-          </div>
-          <button class="job-dismiss" data-id="${j.id}" aria-label="Cancel">✕</button>
-        </div>`;
-      }
-      if (j.status === 'done') {
-        return `<div class="job-row done">
-          <div class="job-icon">✓</div>
-          <div class="job-info">
-            <div class="job-name">${escHtml(j.name)}</div>
-            <div class="job-meta">complete</div>
-          </div>
-        </div>`;
-      }
-      if (j.status === 'failed') {
-        return `<div class="job-row failed">
-          <div class="job-icon">✕</div>
-          <div class="job-info">
-            <div class="job-name">${escHtml(j.name)}</div>
-            <div class="job-meta">failed: ${escHtml(j.error || '')}</div>
-          </div>
-          <button class="job-retry" data-id="${j.id}" aria-label="Retry">↻</button>
-          <button class="job-dismiss" data-id="${j.id}" aria-label="Dismiss">✕</button>
-        </div>`;
-      }
-      if (j.status === 'not_found') {
-        const sugs = j.notFoundData?.suggestions || [];
-        const reason = j.notFoundData?.reason || '';
-        return `<div class="job-row notfound">
-          <div class="job-row-top">
-            <div class="job-icon notfound-icon">?</div>
-            <div class="job-info">
-              <div class="job-name">${escHtml(j.name)}</div>
-              <div class="job-meta">not found${reason ? ` · ${escHtml(reason)}` : ''}</div>
-            </div>
-            <button class="job-dismiss" data-id="${j.id}" aria-label="Dismiss">✕</button>
-          </div>
-          ${sugs.length ? `<div class="job-suggestions">
-            <div class="suggestions-title">Did you mean?</div>
-            ${sugs.map((s, i) => `<button class="suggest-chip" data-job="${j.id}" data-i="${i}">
-              <div class="sg-name">${escHtml(s.name)}${s.company ? ` <span class="sg-co">@ ${escHtml(s.company)}</span>` : ''}</div>
-              ${s.why ? `<div class="sg-why">${escHtml(s.why)}</div>` : ''}
-            </button>`).join('')}
-          </div>` : ''}
-        </div>`;
-      }
-      return '';
-    }).join('');
+
+    // Build outer scaffolding ONCE; never destroy unless panel emptied
+    if (!this._jobRows || !$panel.querySelector('.active-jobs-rows')) {
+      $panel.innerHTML = `
+        <div class="active-jobs-header">
+          <span class="active-jobs-title">SCANNING</span>
+          <span class="active-jobs-count">0</span>
+        </div>
+        <div class="active-jobs-rows"></div>
+        <div class="active-jobs-tip"></div>
+      `;
+      this._jobRows = new Map();
+    }
+
+    const $rows = $panel.querySelector('.active-jobs-rows');
+    const $count = $panel.querySelector('.active-jobs-count');
+    const $tip = $panel.querySelector('.active-jobs-tip');
 
     const running = Jobs.runningCount();
-    $panel.innerHTML = `
-      <div class="active-jobs-header">
-        <span class="active-jobs-title">SCANNING</span>
-        <span class="active-jobs-count">${running}</span>
-      </div>
-      ${rows}
-      ${running > 0 ? '<div class="active-jobs-tip">Keep this screen open while scanning. Closing the app or locking the phone may interrupt the request.</div>' : ''}
-    `;
-    $panel.querySelectorAll('.job-dismiss').forEach(b => b.addEventListener('click', (e) => {
+    if ($count.textContent !== String(running)) $count.textContent = running;
+    const tipText = running > 0
+      ? 'Keep this screen open while scanning. Closing the app or locking the phone may interrupt the request.'
+      : '';
+    if ($tip.textContent !== tipText) $tip.textContent = tipText;
+
+    // Remove rows for jobs that no longer exist
+    const currentIds = new Set(jobs.map(j => j.id));
+    for (const [id, $row] of this._jobRows) {
+      if (!currentIds.has(id)) {
+        $row.remove();
+        this._jobRows.delete(id);
+      }
+    }
+
+    // Add or update each job row
+    jobs.forEach(j => {
+      let $row = this._jobRows.get(j.id);
+      if (!$row) {
+        $row = this._renderJobRow(j);
+        $rows.appendChild($row);
+        this._jobRows.set(j.id, $row);
+      } else if ($row.dataset.status !== j.status) {
+        // Status changed: replace row entirely (different structure)
+        const $newRow = this._renderJobRow(j);
+        $row.replaceWith($newRow);
+        this._jobRows.set(j.id, $newRow);
+      } else {
+        // Same status: patch text only — radar DOM stays alive!
+        this._patchJobRow($row, j);
+      }
+    });
+  },
+
+  _formatElapsed(ms) {
+    const sec = Math.floor(ms / 1000);
+    return sec < 90 ? `${sec}s` : `${Math.floor(sec / 60)}m ${sec % 60}s`;
+  },
+
+  _renderJobRow(j) {
+    const div = document.createElement('div');
+    div.dataset.id = j.id;
+    div.dataset.status = j.status;
+    const startedAt = j.submittedAt || j.startedAt || Date.now();
+    const elapsed = this._formatElapsed(Date.now() - startedAt);
+    const isPending = ['submitting', 'queued', 'processing', 'running'].includes(j.status);
+
+    if (isPending) {
+      div.className = 'job-row running';
+      div.innerHTML = `
+        <div class="job-radar">
+          <div class="ring"></div>
+          <div class="ring r2"></div>
+          <div class="sweep"></div>
+          <div class="dot"></div>
+          <div class="reticle"></div>
+        </div>
+        <div class="job-info">
+          <div class="job-name">${escHtml(j.name)}${j.company ? ` <span class="job-co">@ ${escHtml(j.company)}</span>` : ''}</div>
+          <div class="job-meta">▸ ${escHtml(j.progress || j.status)} · ${elapsed}</div>
+        </div>
+        <button class="job-dismiss" data-id="${j.id}" aria-label="Cancel">✕</button>
+      `;
+    } else if (j.status === 'done') {
+      div.className = 'job-row done';
+      div.innerHTML = `
+        <div class="job-icon">✓</div>
+        <div class="job-info">
+          <div class="job-name">${escHtml(j.name)}</div>
+          <div class="job-meta">complete</div>
+        </div>
+      `;
+    } else if (j.status === 'failed') {
+      div.className = 'job-row failed';
+      div.innerHTML = `
+        <div class="job-icon">✕</div>
+        <div class="job-info">
+          <div class="job-name">${escHtml(j.name)}</div>
+          <div class="job-meta">failed: ${escHtml(j.error || '')}</div>
+        </div>
+        <button class="job-retry" data-id="${j.id}" aria-label="Retry">↻</button>
+        <button class="job-dismiss" data-id="${j.id}" aria-label="Dismiss">✕</button>
+      `;
+    } else if (j.status === 'not_found') {
+      const sugs = j.notFoundData?.suggestions || [];
+      const reason = j.notFoundData?.reason || '';
+      div.className = 'job-row notfound';
+      div.innerHTML = `
+        <div class="job-row-top">
+          <div class="job-icon notfound-icon">?</div>
+          <div class="job-info">
+            <div class="job-name">${escHtml(j.name)}</div>
+            <div class="job-meta">not found${reason ? ` · ${escHtml(reason)}` : ''}</div>
+          </div>
+          <button class="job-dismiss" data-id="${j.id}" aria-label="Dismiss">✕</button>
+        </div>
+        ${sugs.length ? `<div class="job-suggestions">
+          <div class="suggestions-title">Did you mean?</div>
+          ${sugs.map((s, i) => `<button class="suggest-chip" data-job="${j.id}" data-i="${i}">
+            <div class="sg-name">${escHtml(s.name)}${s.company ? ` <span class="sg-co">@ ${escHtml(s.company)}</span>` : ''}</div>
+            ${s.why ? `<div class="sg-why">${escHtml(s.why)}</div>` : ''}
+          </button>`).join('')}
+        </div>` : ''}
+      `;
+    }
+
+    this._bindJobRowEvents(div);
+    return div;
+  },
+
+  _patchJobRow($row, j) {
+    // Only the meta line changes for in-flight jobs. Leave radar alone.
+    const $meta = $row.querySelector('.job-meta');
+    if (!$meta) return;
+    const startedAt = j.submittedAt || j.startedAt || Date.now();
+    const elapsed = this._formatElapsed(Date.now() - startedAt);
+    const isPending = ['submitting', 'queued', 'processing', 'running'].includes(j.status);
+    if (isPending) {
+      const target = `▸ ${j.progress || j.status} · ${elapsed}`;
+      if ($meta.textContent !== target) $meta.textContent = target;
+    }
+  },
+
+  _bindJobRowEvents($row) {
+    $row.querySelectorAll('.job-dismiss').forEach(b => b.addEventListener('click', (e) => {
+      e.stopPropagation();
       Jobs.dismiss(e.currentTarget.dataset.id);
     }));
-    $panel.querySelectorAll('.job-retry').forEach(b => b.addEventListener('click', (e) => {
+    $row.querySelectorAll('.job-retry').forEach(b => b.addEventListener('click', (e) => {
+      e.stopPropagation();
       Jobs.retry(e.currentTarget.dataset.id);
     }));
-    $panel.querySelectorAll('.suggest-chip').forEach(b => b.addEventListener('click', (e) => {
+    $row.querySelectorAll('.suggest-chip').forEach(b => b.addEventListener('click', (e) => {
       const jobId = e.currentTarget.dataset.job;
       const i = parseInt(e.currentTarget.dataset.i, 10);
       const job = Jobs.active.find(j => j.id === jobId);
