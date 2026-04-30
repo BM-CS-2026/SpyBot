@@ -98,10 +98,10 @@ Then output ONLY this JSON object (no other text, no code fences):
   ],
   "common_ground": {
     "current": [
-      {"main": "Specific overlap right now", "more": "EVIDENCE on both sides. Format: 'You: <fact from user LinkedIn/bio>. Target: <fact from target>.'"}
+      {"main": "Specific overlap right now", "more": "EVIDENCE on both sides. Format: 'You: <fact from user LinkedIn/bio>. Target: <fact from target>.'", "source": "https://... — URL where the TARGET's side of the overlap was found, or null"}
     ],
     "historical": [
-      {"main": "Specific past overlap (school, city, employer, project)", "more": "EVIDENCE on both sides. Format: 'You: <fact>. Target: <fact>.'"}
+      {"main": "Specific past overlap (school, city, employer, project)", "more": "EVIDENCE on both sides. Format: 'You: <fact>. Target: <fact>.'", "source": "https://... — URL where the TARGET's side of the overlap was found, or null"}
     ]
   },
   "career_timeline": [
@@ -168,11 +168,11 @@ COMMON_GROUND RIGOR (CRITICAL — many past mistakes here):
 - An EMPTY common_ground array is ALWAYS BETTER than a wrong overlap. Returning [] when no real overlap exists is the correct behavior.
 - NEVER invent a school year, city date, or employer to make an overlap fit. If the dates don't match (e.g. user at MIT 1998-2002, target at MIT 2010-2014), that is NOT an overlap unless you specifically explain "alumni of same institution".
 
-CONVERSATION_SMALL_TALK SOURCES:
-- For EVERY item under conversation_small_talk, include a "source" URL pointing to where you found the fact. This is so the user can verify and click through.
-- The source is for the TARGET's information only. Never link to the user's own LinkedIn or bio sources.
-- If a fact is general knowledge (e.g. a famous historical fact about a city) and you didn't find a single source, use null.
-- The source must be a real URL you actually found in your web searches, not a guess or a search-page URL.
+SOURCES on bullet items (apply to common_ground AND conversation_small_talk):
+- Every item in common_ground.current, common_ground.historical, and every item under conversation_small_talk MUST include a "source" URL.
+- The source URL points to where you found the TARGET's side of the fact. NEVER link to the user's own LinkedIn or bio.
+- The source must be a real URL you actually found in your web searches, not a guess and not a search-page URL.
+- If you genuinely have no source URL for the target side (e.g. general knowledge about a city), use null. But for common_ground specifically, if you cannot cite the target's side, you should OMIT the overlap entirely (per the rigor rule above).
 
 Final reminders:
 - Output ONLY the JSON object. No leading prose. No trailing prose. No markdown.
